@@ -134,3 +134,6 @@ out
 
 # IDE-specific settings
 .idea
+
+
+package-lock.json

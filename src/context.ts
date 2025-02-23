@@ -896,10 +896,7 @@ const interfaceWithHelpers = <A extends ContextArgs>(...args: A): InterfaceWithH
   return args[1]?.helpers ?? {} as InterfaceWithHelpers<A>
 }
 
-const mixinHelpers = <
-  T extends Constructor, 
-  M extends Helpers
->(Base: T, helpers: M) => {
+const mixinHelpers = (Base: Constructor, helpers: Helpers) => {
     class WithHelpers extends Base {
         constructor(...args: any) {
             super(...args);
@@ -910,12 +907,16 @@ const mixinHelpers = <
     return WithHelpers as (
         (new (...args: ContextArgs) => Union) & {
             prototype: Union;
-        }) & T;
+        }) & InstanceType<typeof Base>;
 }
 
 const ContextWithHelpers = (...args: ContextArgs) => {
   const helpers = helpersInArgs(...args)
-  return class Test extends mixinHelpers(ContextBase, helpers) {
+  return class Test<
+    E extends Env = any,
+    P extends string = any,
+    I extends Input = {}
+  > extends mixinHelpers(ContextBase<E, P, I>, helpers) {
     constructor() {
       super(...args)
     }
@@ -953,14 +954,14 @@ const GetClassWithHelpers = <Args extends ContextArgs>(...args: Args) => {
 
 
 
-interface ContextBase<
-  E extends Env = any,
-  P extends string = any,
-  I extends Input = {},
-  H extends Helpers = NonNullable<E['Helpers']>,
-> extends InstanceType<typeof ContextBase> {
-  [key in H]: H[keyof H]
-}
+// interface ContextBase<
+//   E extends Env = any,
+//   P extends string = any,
+//   I extends Input = {},
+//   H extends Helpers = NonNullable<E['Helpers']>,
+// > extends InstanceType<typeof ContextBase> {
+//   [key in H]: H[keyof H]
+// }
 
 
 // Try to infer the type of the helpers from constructor & implement the helpers typesafely
