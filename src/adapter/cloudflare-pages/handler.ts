@@ -1,4 +1,4 @@
-import { Context } from '../../context'
+import { createCtx } from '../../context'
 import type { Hono } from '../../hono'
 import { HTTPException } from '../../http-exception'
 import type { BlankSchema, Env, Input, MiddlewareHandler, Schema } from '../../types'
@@ -7,6 +7,7 @@ import type { BlankSchema, Env, Input, MiddlewareHandler, Schema } from '../../t
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Params<P extends string = any> = Record<P, string | string[]>
+type MiddlewareEnv = Env & { Bindings: { eventContext: EventContext } }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type EventContext<Env = {}, P extends string = any, Data = Record<string, unknown>> = {
@@ -43,7 +44,7 @@ export const handle =
   }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleMiddleware<E extends Env = {}, P extends string = any, I extends Input = {}>(
+export function handleMiddleware<E extends MiddlewareEnv, P extends string = any, I extends Input = {}>(
   middleware: MiddlewareHandler<
     E & {
       Bindings: {
@@ -55,7 +56,7 @@ export function handleMiddleware<E extends Env = {}, P extends string = any, I e
   >
 ): PagesFunction<E['Bindings']> {
   return async (executionCtx) => {
-    const context = new Context(executionCtx.request, {
+    const context = createCtx<E>(executionCtx.request, {
       env: { ...executionCtx.env, eventContext: executionCtx },
       executionCtx,
     })

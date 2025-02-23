@@ -20,7 +20,7 @@ export type ServeStaticOptions<E extends Env = Env> = BaseServeStaticOptions<E> 
  */
 export const serveStatic = <E extends Env = Env>(
   options: ServeStaticOptions<E>
-): MiddlewareHandler => {
+): MiddlewareHandler<E> => {
   return async function serveStatic(c, next) {
     const getContent = async (path: string) => {
       return getContentFromKVAsset(path, {

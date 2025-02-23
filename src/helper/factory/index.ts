@@ -288,10 +288,15 @@ export class Factory<E extends Env = Env, P extends string = string> {
   private initApp?: InitApp<E>
   #defaultAppOptions?: HonoOptions<E>
 
-  constructor(init?: { initApp?: InitApp<E>; defaultAppOptions?: HonoOptions<E> }) {
+  constructor(init?: { initApp?: InitApp<E>; defaultAppOptions?: HonoOptions<E>, helpers?: E['Helpers'] }) {
     this.initApp = init?.initApp
-    this.#defaultAppOptions = init?.defaultAppOptions
+    this.#defaultAppOptions = { ...init?.defaultAppOptions, helpers: init?.helpers }
   }
+
+  // constructor(init?: { initApp?: InitApp<E>; defaultAppOptions?: HonoOptions<E> }) {
+  //   this.initApp = init?.initApp
+  //   this.#defaultAppOptions = init?.defaultAppOptions
+  // }
 
   createApp = (options?: HonoOptions<E>): Hono<E> => {
     const app = new Hono<E>(

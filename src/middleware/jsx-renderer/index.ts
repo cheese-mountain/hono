@@ -150,10 +150,10 @@ export const useRequestContext = <
   E extends Env = any,
   P extends string = any,
   I extends Input = {}
->(): Context<E, P, I> => {
+>() => {
   const c = useContext(RequestContext)
   if (!c) {
     throw new Error('RequestContext is not provided.')
   }
-  return c
+  return c as Context<E, P, I>
 }

@@ -5,7 +5,7 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { compose } from './compose'
-import { Context } from './context'
+import { createCtx } from './context'
 import type { ExecutionContext } from './context'
 import type { Router } from './router'
 import { METHODS, METHOD_NAME_ALL, METHOD_NAME_ALL_LOWERCASE } from './router'
@@ -25,6 +25,7 @@ import type {
   OnHandlerInterface,
   RouterRoute,
   Schema,
+  Context,
 } from './types'
 import { COMPOSED_HANDLER } from './utils/constants'
 import { getPath, getPathNoStrict, mergePath } from './utils/url'
@@ -84,6 +85,9 @@ export type HonoOptions<E extends Env> = {
    * ```
    */
   getPath?: GetPath<E>
+
+
+  helpers?: E['Helpers']
 }
 
 type MountOptionHandler = (c: Context) => unknown
@@ -115,6 +119,7 @@ class Hono<E extends Env = Env, S extends Schema = {}, BasePath extends string =
   // Cannot use `#` because it requires visibility at JavaScript runtime.
   private _basePath: string = '/'
   #path: string = '/'
+  #helpers: E['Helpers'] = {}
 
   routes: RouterRoute[] = []
 
@@ -160,6 +165,11 @@ class Hono<E extends Env = Env, S extends Schema = {}, BasePath extends string =
         this.#addRoute(METHOD_NAME_ALL, this.#path, handler)
       })
       return this as any
+    }
+
+    // Implementation of provided helpers
+    if (options.helpers) {
+      this.#helpers = options.helpers
     }
 
     const strict = options.strict ?? true
@@ -377,7 +387,7 @@ class Hono<E extends Env = Env, S extends Schema = {}, BasePath extends string =
     this.routes.push(r)
   }
 
-  #handleError(err: unknown, c: Context<E>) {
+  #handleError(err: unknown, c: Context) {
     if (err instanceof Error) {
       return this.errorHandler(err, c)
     }
@@ -399,11 +409,12 @@ class Hono<E extends Env = Env, S extends Schema = {}, BasePath extends string =
     const path = this.getPath(request, { env })
     const matchResult = this.router.match(method, path)
 
-    const c = new Context(request, {
+    const c = createCtx(request, {
       path,
       matchResult,
       env,
       executionCtx,
+      helpers: this.#helpers,
       notFoundHandler: this.#notFoundHandler,
     })
 

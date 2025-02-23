@@ -4,6 +4,7 @@ import type {
   Env,
   FetchEventLike,
   H,
+  Helpers,
   Input,
   NotFoundHandler,
   RouterRoute,
@@ -235,6 +236,10 @@ type ContextOptions<E extends Env> = {
    */
   env: E['Bindings']
   /**
+   * Optional helper functions to set context.
+   */
+  helpers?: E['Helpers']
+  /**
    * Execution context for the request.
    */
   executionCtx?: FetchEventLike | ExecutionContext | undefined
@@ -287,7 +292,7 @@ const setHeaders = (headers: Headers, map: Record<string, string> = {}) => {
   return headers
 }
 
-export class Context<
+export class ContextBase<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   E extends Env = any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -343,7 +348,7 @@ export class Context<
   #path: string | undefined
 
   /**
-   * Creates an instance of the Context class.
+   * Creates an instance of the ContextBase class.
    *
    * @param req - The Request object.
    * @param options - Optional configuration options for the context.
@@ -356,8 +361,12 @@ export class Context<
       this.#notFoundHandler = options.notFoundHandler
       this.#path = options.path
       this.#matchResult = options.matchResult
+
+      if (options.helpers) {
+        Object.assign(this, options.helpers)
+      }
     }
-  }
+  } 
 
   /**
    * `.req` is the instance of {@link HonoRequest}.
@@ -860,6 +869,118 @@ export class Context<
    */
   notFound = (): Response | Promise<Response> => {
     this.#notFoundHandler ??= () => new Response()
-    return this.#notFoundHandler(this)
+    return this.#notFoundHandler(this as any)
   }
 }
+
+type HelperMethods<E extends Env = Env> = 
+  E['Helpers'] extends undefined ? {} :
+  IsAny<E['Helpers']> extends true ? {} :
+  E['Helpers'] extends Helpers ? NonNullable<E['Helpers']> : {}
+
+export type Context<
+  E extends Env = any,
+  P extends string = any,
+  I extends Input = {},
+> = ContextBase<E, P, I> & HelperMethods<E>
+
+type HelperPropsMap<T> = {
+  [key in keyof T]: T[key]
+}
+
+function GetClassWithHelpers(...args: ConstructorParameters<typeof ContextBase>) {
+  // infer the type of the helpers from constructor & implement the helpers typesafely
+  const helpers = args[1]?.helpers ?? {} as H
+  type H = NonNullable<NonNullable<(typeof args)[1]>['helpers']>
+
+  return class ContextWithHelpers extends ContextBase {
+    [key: keyof H]: H[keyof H]
+
+    constructor() {
+      super(...args as ConstructorParameters<typeof ContextBase>)
+      Object.assign(this, helpers)
+    }
+  }
+}
+
+function GetInterfaceWithHelpers(
+  helpers: Helpers,
+) {
+  return interface {
+    [key in T]: T[keyof T]
+  }
+}
+
+interface InterfaceWithHelpers = () => {} (helpers: Helpers) => {
+  [key in T]: T[keyof T]
+}
+
+
+interface ContextBase<
+  E extends Env = any,
+  P extends string = any,
+  I extends Input = {},
+  H extends Helpers = NonNullable<E['Helpers']>,
+> extends InstanceType<typeof ContextBase> {
+  [key in H]: H[keyof H]
+}
+
+
+// Try to infer the type of the helpers from constructor & implement the helpers typesafely
+class Context4<
+  E extends Env = any,
+  P extends string = any,
+  I extends Input = {},
+  H extends Helpers = NonNullable<E['Helpers']>,
+> extends ContextBase<E, P, I> implements HelperProps<H> {
+  // [key in H]: H[keyof H]
+
+  constructor(req: Request, options?: ContextOptions<E>, helpers: H) {
+    super(req, options)
+    Object.assign(this, helpers)
+  }
+
+}
+class Context5<
+  E extends Env = any,
+  H extends Helpers = NonNullable<E['Helpers']>,
+> extends HelpersMethods {
+  constructor(req: Request, options: ContextOptions<E>, helpers: H) {
+    super(req, options)
+    Object.assign(this, helpers)
+  }
+} 
+
+export const createCtx = <
+  E extends Env = any,
+  P extends string = any,
+  I extends Input = {},
+>(...args: ConstructorParameters<typeof ContextBase<E, P, I>>) => {
+  return new ContextBase<E, P, I>(...args) as Context<E, P, I> ;
+}
+
+export const isCtx = <E extends Env = any>(ctx: unknown): ctx is Context<E> => ctx instanceof ContextBase
+
+const CtxArgs = [new Request(''), { env: {} }] as ConstructorParameters<typeof ContextBase>
+const helpers = { test: () => 'test' }
+
+const problem = <
+  E extends Env = any,
+  P extends string = any,
+  I extends Input = {}
+>(): Context<E, P, I> => {
+  const ctx = createCtx(new Request('')) // Gives type Context<any, any, {}>
+  return ctx
+}
+
+type Ctx4 = Context4<HelperMethods<Env>>
+const Ctx4Instance = new Context4(...CtxArgs, { test: () => 'test' })
+const Ctx5Instance = new Context5(...CtxArgs, { test: () => 'test' })
+const test = Ctx5Instance.test
+type Test = Context3<Env, string, { out: { a: string } }>
+type Test2 = Context2<Env, HelperMethods<Env>>
+
+const test213213 = new GetClassWithHelpers(...CtxArgs)
+
+type TestHelpers = HelperProps<typeof helpers>
+type TestHelpers2 = HelperPropsMap<typeof helpers>

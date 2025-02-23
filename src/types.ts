@@ -26,11 +26,17 @@ import type {
 
 export type Bindings = object
 export type Variables = object
+// export type Helpers<T = any> = T extends Record<string, any> {
+//   [K in keyof T]: T[K]
+// } : {}
+export type Helpers = object
+export type { Context }
 
 export type BlankEnv = {}
 export type Env = {
   Bindings?: Bindings
   Variables?: Variables
+  Helpers?: Helpers
 }
 
 export type Next = () => Promise<void>

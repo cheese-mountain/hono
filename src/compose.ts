@@ -1,4 +1,4 @@
-import { Context } from './context'
+import { isCtx } from './context'
 import type { Env, ErrorHandler, NotFoundHandler } from './types'
 
 /**
@@ -36,7 +36,7 @@ export const compose = <C extends ComposeContext, E extends Env = Env>(
 ): ((context: C, next?: Function) => Promise<C>) => {
   return (context, next) => {
     let index = -1
-    const isContext = context instanceof Context
+    const isContext = isCtx<E>(context)
 
     return dispatch(0)
 
