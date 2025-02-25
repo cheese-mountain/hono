@@ -238,7 +238,7 @@ type ContextOptions<E extends Env> = {
   /**
    * Optional helper functions to set context.
    */
-  helpers?: E extends any ? E['Helpers'] : Helpers
+  helpers?: E['Helpers']
   /**
    * Execution context for the request.
    */
@@ -885,15 +885,27 @@ type ContextArgs<E extends Env = any> = ConstructorParameters<typeof ContextBase
 type HelpersInArgs<T extends ContextArgs> = 
   T[1] extends { helpers: infer U } ? U extends Helpers ? U : {}  : {}
 
-const helpersInArgs = <T extends ContextArgs>(...args: T): HelpersInArgs<T> => args[1]?.helpers ?? {}
+type HelpersInEnv<E extends Env> = E['Helpers'] extends Helpers ? E['Helpers'] : {}
 
-interface InterfaceWithHelpers<
-  A extends ContextArgs,
-  T extends Helpers = HelpersInArgs<A>
-> extends T {}
+// Can either get helpers from the env or from the args (or actually it might do the same under the hood)
+const helpersInArgs = <T extends ContextArgs>(...args: T): 
+  T[1] extends { helpers: infer U } ? U extends Helpers ? U : {} : {} => args[1]?.helpers ?? {}
 
-const interfaceWithHelpers = <A extends ContextArgs>(...args: A): InterfaceWithHelpers<A> => {
-  return args[1]?.helpers ?? {} as InterfaceWithHelpers<A>
+const helpersInOptions = <E extends Env>(options?: ContextOptions<E>):
+  HelpersInEnv<E> => options?.helpers ?? {}
+
+type MergeClassWithHelpers<T extends Constructor, U extends Helpers> = T & U & {
+  prototype: InstanceType<T> & U;
+  new (...args: ConstructorParameters<T>): InstanceType<T> & U;
+}
+
+interface WithHelpersInterface<T extends Helpers> {
+  [key: string]: T[keyof T]
+}
+
+type MergeClassWithHelpers2<T extends Constructor, U extends Helpers> = T & U & {
+  prototype: InstanceType<T> & U;
+  new (...args: ConstructorParameters<T>): InstanceType<T> & U;
 }
 
 const mixinHelpers = (Base: Constructor, helpers: Helpers) => {
@@ -903,24 +915,57 @@ const mixinHelpers = (Base: Constructor, helpers: Helpers) => {
             Object.assign(this, helpers)
         }
     };
-    type Union = WithHelpers & typeof helpers;
-    return WithHelpers as (
-        (new (...args: ContextArgs) => Union) & {
-            prototype: Union;
-        }) & InstanceType<typeof Base>;
+    return WithHelpers
 }
 
-const ContextWithHelpers = (...args: ContextArgs) => {
-  const helpers = helpersInArgs(...args)
-  return class Test<
-    E extends Env = any,
-    P extends string = any,
-    I extends Input = {}
-  > extends mixinHelpers(ContextBase<E, P, I>, helpers) {
+const mixinHelpers2 = <
+  T extends Constructor<any>,
+  H extends Helpers
+>(
+  Base: T,
+  helpers: H
+) => {
+  class WithHelpers extends Base {
+      constructor(...args: any[]) {
+          super(...args);
+          Object.assign(WithHelpers.prototype, helpers);
+      }
+  };
+  interface WithHelpers extends WithHelpersInterface<H> {}
+  return WithHelpers
+}
+
+function WithHelpers(helpers: Helpers) {
+  return function decorator<T extends { new (...args: any[]): any }>(Base: T) {
+      return class extends Base {
+          x: string = 'test'
+          constructor(...args: any) {
+              super(...args);
+              Object.assign(this, helpers)
+          }
+      } as MergeClassWithHelpers<typeof Base, typeof helpers>
+  } 
+
+  // as (
+  //   (new (...args: ConstructorParameters<T>) => InstanceType<T> & typeof helpers) & {
+  //       prototype: InstanceType<T> & typeof helpers;
+  //   }
+  // )
+}
+
+const ContextWithHelpers = <
+  // T extends [Request, ContextOptions<any>], // More specific constraint
+  E extends Env 
+  >(request: Request, options: ContextOptions<E>) => {
+  // const helpers = helpersInArgs(args[1])
+  const helpers = helpersInOptions(options)
+  const mixed = mixinHelpers(ContextBase, helpers)
+  const r = class Test extends mixed {
     constructor() {
-      super(...args)
+      super(request, options)
     }
   }
+  return [r, mixed] as const
 }
 
 export type Context<
@@ -928,30 +973,6 @@ export type Context<
   P extends string = any,
   I extends Input = {},
 > = ContextBase<E, P, I> & HelperMethods<E>
-
-type HelperPropsMap<T> = {
-  [key in keyof T]: T[key]
-}
-
-const GetClassWithHelpers = <Args extends ContextArgs>(...args: Args) => {
-  const helpers = interfaceWithHelpers(...args)
-  type T = { helpers: { test: () => 'test' } } extends { helpers: infer U } ? U : {}
-
-  type test = InterfaceWithHelpers<Args, T>
-
-   class ContextWithHelpers extends helpers {
-    // constructor() {
-    //   super(...args as ConstructorParameters<typeof ContextBase>)
-    //   Object.assign(this, helpers)
-    // }
-  }
-
-
-  return [ContextWithHelpers, helpers as T] as const
-}
-
-
-
 
 
 // interface ContextBase<
@@ -963,32 +984,6 @@ const GetClassWithHelpers = <Args extends ContextArgs>(...args: Args) => {
 //   [key in H]: H[keyof H]
 // }
 
-
-// Try to infer the type of the helpers from constructor & implement the helpers typesafely
-class Context4<
-  E extends Env = any,
-  P extends string = any,
-  I extends Input = {},
-  H extends Helpers = NonNullable<E['Helpers']>,
-> extends ContextBase<E, P, I> implements HelperProps<H> {
-  // [key in H]: H[keyof H]
-
-  constructor(req: Request, options?: ContextOptions<E>, helpers: H) {
-    super(req, options)
-    Object.assign(this, helpers)
-  }
-
-}
-class Context5<
-  E extends Env = any,
-  H extends Helpers = NonNullable<E['Helpers']>,
-> extends HelpersMethods {
-  constructor(req: Request, options: ContextOptions<E>, helpers: H) {
-    super(req, options)
-    Object.assign(this, helpers)
-  }
-} 
-
 export const createCtx = <
   E extends Env = any,
   P extends string = any,
@@ -999,8 +994,12 @@ export const createCtx = <
 
 export const isCtx = <E extends Env = any>(ctx: unknown): ctx is Context<E> => ctx instanceof ContextBase
 
-const CtxArgs = [new Request(''), { helpers: { test: () => 'test' }, env: {} }] as const
 const helpers = { test: () => 'test' }
+type TestEnv = {
+  Helpers: typeof helpers
+}
+
+const CtxArgs = [new Request(''), { helpers, env: {} }] as [Request, ContextOptions<TestEnv>]
 
 const problem = <
   E extends Env = any,
@@ -1011,20 +1010,28 @@ const problem = <
   return ctx
 }
 
+type TestInstance = InstanceType<typeof ContextBase>
+type TestType = (typeof ContextBase)
 
-type ContextOptions2 = ContextArgs[1]['helpers']
-const Ctx4Instance = new Context4(...CtxArgs, { test: () => 'test' })
-const Ctx5Instance = new Context5(...CtxArgs, { test: () => 'test' })
-const test = Ctx5Instance.test
-type Test = Context3<Env, string, { out: { a: string } }>
-type Test2 = Context2<Env, HelperMethods<Env>>
+const [WithHelpersClass, WithHelpersClass2] = ContextWithHelpers(...CtxArgs)
 
-const [WithHelpers, withHelpers] = GetClassWithHelpers(...CtxArgs)
-const WithHelpers2 = ContextWithHelpers(...CtxArgs)
+const ctx = new WithHelpersClass()
+const ctx2 = new WithHelpersClass2()
 
-const Test3 = new WithHelpers2(...CtxArgs)
+type Test = (typeof ctx)
+type Test2 = (typeof ctx2)
 
-type TestInterface = InterfaceWithHelpers<typeof helpers>
+const Mixed = mixinHelpers2(ContextBase, helpers)
 
-type TestHelpers = HelperProps<typeof helpers>
-type TestHelpers2 = HelperPropsMap<typeof helpers>
+const mixedTest = new Mixed(new Request(''), { helpers, env: {} })
+
+class ContextBase2 {
+    constructor(public request: Request, public options: ContextOptions<any>) {}
+    
+    baseMethod() {
+        return "base functionality";
+    }
+}
+
+const ctx3 = new ContextBase2(new Request(''), { helpers, env: {} })
+type ContextBaseType = (typeof ContextBase2)['']

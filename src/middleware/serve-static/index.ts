@@ -38,7 +38,7 @@ export const serveStatic = <E extends Env = Env>(
     pathResolve?: (path: string) => string
     isDir?: (path: string) => boolean | undefined | Promise<boolean | undefined>
   }
-): MiddlewareHandler<E> => {
+): MiddlewareHandler => {
   let isAbsoluteRoot = false
   let root: string
 
