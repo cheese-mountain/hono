@@ -4,6 +4,7 @@ import type {
   Env,
   FetchEventLike,
   H,
+  Helpers,
   Input,
   NotFoundHandler,
   RouterRoute,
@@ -164,7 +165,7 @@ interface TextRespond {
  *
  * @returns {JSONRespondReturn<T, U>} - The response after rendering the JSON object, typed with the provided object and status code types.
  */
-interface JSONRespond {
+export interface JSONRespond {
   <
     T extends JSONValue | SimplifyDeepArray<unknown> | InvalidJSONValue,
     U extends ContentfulStatusCode = ContentfulStatusCode
@@ -235,6 +236,10 @@ type ContextOptions<E extends Env> = {
    */
   env: E['Bindings']
   /**
+   * Optional helper functions to provide context with.
+   */
+  helpers?: E['Helpers']
+  /**
    * Execution context for the request.
    */
   executionCtx?: FetchEventLike | ExecutionContext | undefined
@@ -287,7 +292,7 @@ const setHeaders = (headers: Headers, map: Record<string, string> = {}) => {
   return headers
 }
 
-export class Context<
+export class ContextBase<
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   E extends Env = any,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -356,6 +361,10 @@ export class Context<
       this.#notFoundHandler = options.notFoundHandler
       this.#path = options.path
       this.#matchResult = options.matchResult
+
+      if (options.helpers) {
+        Object.assign(this, options.helpers)
+      }
     }
   }
 
@@ -863,3 +872,19 @@ export class Context<
     return this.#notFoundHandler(this)
   }
 }
+
+type HelperMethods<E extends Env = Env> = 
+  E['Helpers'] extends undefined ? {} :
+  IsAny<E['Helpers']> extends true ? {} :
+  E['Helpers'] extends Helpers ? NonNullable<E['Helpers']> : {}
+    
+export type Context<
+  E extends Env = any,
+  P extends string = any,
+  I extends Input = {},
+> = ContextBase<E, P, I> & HelperMethods<E>
+
+export const Context = ContextBase as (
+  new <E extends Env = any, P extends string = any, I extends Input = {}>
+    (...args: ConstructorParameters<typeof ContextBase<E, P, I>>) => Context<E, P, I>
+)

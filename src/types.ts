@@ -26,11 +26,13 @@ import type {
 
 export type Bindings = object
 export type Variables = object
+export type Helpers = Record<string, any>
 
 export type BlankEnv = {}
 export type Env = {
   Bindings?: Bindings
   Variables?: Variables
+  Helpers?: Helpers
 }
 
 export type Next = () => Promise<void>

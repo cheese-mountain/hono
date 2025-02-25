@@ -63,6 +63,7 @@ export type HonoOptions<E extends Env> = {
    * ```
    */
   router?: Router<[H, RouterRoute]>
+  helpers?: E['Helpers']
   /**
    * `getPath` can handle the host header value.
    *
