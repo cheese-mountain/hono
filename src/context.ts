@@ -873,16 +873,16 @@ export class ContextBase<
   }
 }
 
-type HelperMethods<E extends Env = Env> = 
+export type HelpersInEnv<E extends Env = Env> = 
   E['Helpers'] extends undefined ? {} :
   IsAny<E['Helpers']> extends true ? {} :
   E['Helpers'] extends Helpers ? NonNullable<E['Helpers']> : {}
-    
+
 export type Context<
   E extends Env = any,
   P extends string = any,
   I extends Input = {},
-> = ContextBase<E, P, I> & HelperMethods<E>
+> = ContextBase<E, P, I> & HelpersInEnv<E>
 
 export const Context = ContextBase as (
   new <E extends Env = any, P extends string = any, I extends Input = {}>

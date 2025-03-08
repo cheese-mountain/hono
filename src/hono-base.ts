@@ -63,6 +63,10 @@ export type HonoOptions<E extends Env> = {
    * ```
    */
   router?: Router<[H, RouterRoute]>
+
+  /**
+   * `helpers` option provides extra helper methods to extend context with.
+   */
   helpers?: E['Helpers']
   /**
    * `getPath` can handle the host header value.
@@ -116,6 +120,7 @@ class Hono<E extends Env = Env, S extends Schema = {}, BasePath extends string =
   // Cannot use `#` because it requires visibility at JavaScript runtime.
   private _basePath: string = '/'
   #path: string = '/'
+  #helpers: E['Helpers'] = {}
 
   routes: RouterRoute[] = []
 
@@ -166,11 +171,13 @@ class Hono<E extends Env = Env, S extends Schema = {}, BasePath extends string =
     const strict = options.strict ?? true
     delete options.strict
     Object.assign(this, options)
+    this.#helpers = options.helpers
     this.getPath = strict ? options.getPath ?? getPath : getPathNoStrict
   }
 
   #clone(): Hono<E, S, BasePath> {
     const clone = new Hono<E, S, BasePath>({
+      helpers: this.#helpers,
       router: this.router,
       getPath: this.getPath,
     })
@@ -405,6 +412,7 @@ class Hono<E extends Env = Env, S extends Schema = {}, BasePath extends string =
       matchResult,
       env,
       executionCtx,
+      helpers: this.#helpers,
       notFoundHandler: this.#notFoundHandler,
     })
 
