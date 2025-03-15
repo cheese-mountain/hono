@@ -872,6 +872,9 @@ export class ContextBase<
     return this.#notFoundHandler(this)
   }
 }
+export type HelperMethods = Record<string, Helpers> & {
+  [K in keyof ContextBase]?: never;
+};
 
 export type HelpersInEnv<E extends Env = Env> = 
   E['Helpers'] extends undefined ? {} :

@@ -5,7 +5,7 @@
 
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Context } from './context'
+import type { Context, HelperMethods } from './context'
 import type { HonoBase } from './hono-base'
 import type { CustomHeader, RequestHeader } from './utils/headers'
 import type { StatusCode } from './utils/http-status'
@@ -27,6 +27,7 @@ import type {
 export type Bindings = object
 export type Variables = object
 export type Helpers = Record<string, any>
+export type { HelperMethods }
 
 export type BlankEnv = {}
 export type Env = {
