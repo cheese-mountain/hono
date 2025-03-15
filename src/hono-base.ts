@@ -168,9 +168,8 @@ class Hono<E extends Env = Env, S extends Schema = {}, BasePath extends string =
       return this as any
     }
 
-    const strict = options.strict ?? true
-    delete options.strict
-    Object.assign(this, options)
+    const { strict, ...optionsWithoutStrict } = options
+    Object.assign(this, optionsWithoutStrict)
     this.#helpers = options.helpers
     this.getPath = strict ? options.getPath ?? getPath : getPathNoStrict
   }
