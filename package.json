@@ -1,5 +1,5 @@
 {
-  "name": "hono",
+  "name": "hono-with-helpers",
   "version": "4.7.4",
   "description": "Web framework built on Web Standards",
   "main": "dist/cjs/index.js",
@@ -623,7 +623,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/honojs/hono.git"
+    "url": "https://github.com/cheese-mountain/hono.git"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.org"
